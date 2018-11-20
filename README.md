@@ -1,6 +1,32 @@
 # Voice-Conversion-GAN
 Voice Conversion using Cycle GAN's (PyTorch Implementation)
 
+## Usage
+
+### Download Dataset
+
+Download and unzip [VCC2016](https://datashare.is.ed.ac.uk/handle/10283/2211) dataset to designated directories.
+
+```bash
+$ python download.py --help
+usage: download.py [-h] [--download_dir DOWNLOAD_DIR] [--data_dir DATA_DIR]
+                   [--datasets DATASETS]
+
+Download CycleGAN voice conversion datasets.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --download_dir DOWNLOAD_DIR
+                        Download directory for zipped data
+  --data_dir DATA_DIR   Data directory for unzipped data
+  --datasets DATASETS   Datasets available: vcc2016
+```
+
+For example, to download the datasets to ``download`` directory and extract to ``data`` directory:
+
+```bash
+$ python download.py --download_dir ./download --data_dir ./data --datasets vcc2016
+```
 
 ### Preprocessing for Training
 Preprocess voice data and stores it in numpy format in ../cache folder
