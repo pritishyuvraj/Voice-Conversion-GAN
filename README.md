@@ -1,6 +1,6 @@
 # Voice-Conversion-GAN
 Voice Conversion using Cycle GAN's (PyTorch Implementation)
-
+(Note: Project Under Development)
 ## Usage
 
 ### Download Dataset
@@ -11,8 +11,6 @@ Download and unzip [VCC2016](https://datashare.is.ed.ac.uk/handle/10283/2211) da
 $ python download.py --help
 usage: download.py [-h] [--download_dir DOWNLOAD_DIR] [--data_dir DATA_DIR]
                    [--datasets DATASETS]
-
-Download CycleGAN voice conversion datasets.
 
 optional arguments:
   -h, --help            show this help message and exit
