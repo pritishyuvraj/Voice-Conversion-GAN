@@ -1,5 +1,22 @@
 # Voice-Conversion-GAN
-Voice Conversion using Cycle GAN's
+Voice Conversion using Cycle GAN's (PyTorch Implementation)
+
+
+### Preprocessing for Training
+Preprocess voice data and stores it in numpy format in ../cache folder
+```bash
+$ python prepocess_training.py --help
+usage: prepocess_training.py [-h] [--train_A_dir TRAIN_A_DIR] [--train_B_dir TRAIN_B_DIR]
+```
+For example, to train CycleGAN model for voice Conversion between ``SF1`` and ``TM1``:
+```bash
+$ python prepocess_training.py --train_A_dir ../data/vcc2016_training/SF1
+                                --train_B_dir ../data/vcc2016_training/TM1
+```                                
+
+
+
+### Useful Tutorials
 
 PyTorch Tutorial: https://github.com/yunjey/pytorch-tutorial
 
