@@ -2,9 +2,20 @@ import os
 import time
 import argparse
 import numpy as np
+import pickle
 
 # Custom Classes
 import preprocess
+
+
+def save_pickle(variable, fileName):
+    with open(fileName, 'wb') as f:
+        pickle.dump(variable, f)
+
+
+def load_pickle_file(fileName):
+    with open(fileName, 'rb') as f:
+        return pickle.load(f)
 
 
 def preprocess_for_training(train_A_dir, train_B_dir):
@@ -43,10 +54,22 @@ def preprocess_for_training(train_A_dir, train_B_dir):
     if not os.path.exists("../cache"):
         os.makedirs("../cache")
 
-    np.savez(os.path.join("../cache", 'logf0s_normalization.npz'), mean_A=log_f0s_mean_A,
-             std_A=log_f0s_std_A, mean_B=log_f0s_mean_B, std_B=log_f0s_std_B)
-    np.savez(os.path.join("../cache", 'mcep_normalization.npz'), mean_A=coded_sps_A_mean,
-             std_A=coded_sps_A_std, mean_B=coded_sps_B_mean, std_B=coded_sps_B_std)
+    np.savez(os.path.join("../cache", 'logf0s_normalization.npz'),
+             mean_A=log_f0s_mean_A,
+             std_A=log_f0s_std_A,
+             mean_B=log_f0s_mean_B,
+             std_B=log_f0s_std_B)
+
+    np.savez(os.path.join("../cache", 'mcep_normalization.npz'),
+             mean_A=coded_sps_A_mean,
+             std_A=coded_sps_A_std,
+             mean_B=coded_sps_B_mean,
+             std_B=coded_sps_B_std)
+
+    save_pickle(variable=coded_sps_A_norm,
+                fileName=os.path.join("../cache", "coded_sps_A_norm.pickle"))
+    save_pickle(variable=coded_sps_B_norm,
+                fileName=os.path.join("../cache", "coded_sps_B_norm.pickle"))
 
     end_time = time.time()
     print("Preprocessing finsihed!! see your directory ../cache for cached preprocessed data")
