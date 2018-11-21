@@ -13,6 +13,20 @@ class GLU(nn.Module):
         return input * torch.sigmoid(input)
 
 
+class PixelShuffle(nn.Module):
+    def __init__(self, upscale_factor):
+        super(PixelShuffle, self).__init__()
+        # Custom Implementation because PyTorch PixelShuffle requires,
+        # 4D input. Whereas, in this case we have have 3D arry
+        self.upscale_factor = upscale_factor
+
+    def forward(self, input):
+        n = input.shape[0]
+        c_out = input.shape[1] // 2
+        w_new = input.shape[2] * 2
+        return input.view(n, c_out, w_new)
+
+
 class ResidualLayer(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, padding):
         super(ResidualLayer, self).__init__()
@@ -45,19 +59,22 @@ class Generator(nn.Module):
         self.conv1 = nn.Sequential(nn.Conv1d(in_channels=24,
                                              out_channels=128,
                                              kernel_size=15,
-                                             stride=1),
+                                             stride=1,
+                                             padding=7),
                                    GLU())
 
         # Downsample Layer
         self.downSample1 = self.downSample(in_channels=128,
                                            out_channels=256,
                                            kernel_size=5,
-                                           stride=2)
+                                           stride=2,
+                                           padding=1)
 
         self.downSample2 = self.downSample(in_channels=256,
                                            out_channels=512,
                                            kernel_size=5,
-                                           stride=2)
+                                           stride=2,
+                                           padding=2)
 
         # Residual Blocks
         self.residualLayer = ResidualLayer(in_channels=512,
@@ -66,32 +83,48 @@ class Generator(nn.Module):
                                            stride=1,
                                            padding=1)
 
-    def downSample(self, in_channels, out_channels,  kernel_size, stride):
+        # UpSample Layer
+        self.upSample1 = self.upSample(in_channels=512,
+                                       out_channels=1024,
+                                       kernel_size=5,
+                                       stride=1,
+                                       padding=2)
+
+        self.upSample2 = self.upSample(in_channels=1024 // 2,
+                                       out_channels=512,
+                                       kernel_size=5,
+                                       stride=1,
+                                       padding=2)
+
+        self.lastConvLayer = nn.Conv1d(in_channels=512 // 2,
+                                       out_channels=24,
+                                       kernel_size=15,
+                                       stride=1,
+                                       padding=7)
+
+    def downSample(self, in_channels, out_channels,  kernel_size, stride, padding):
         self.ConvLayer = nn.Sequential(nn.Conv1d(in_channels=in_channels,
                                                  out_channels=out_channels,
                                                  kernel_size=kernel_size,
-                                                 stride=stride),
+                                                 stride=stride,
+                                                 padding=padding),
                                        nn.InstanceNorm1d(
                                        num_features=out_channels),
                                        GLU())
 
         return self.ConvLayer
 
-    def residualBlock(self, in_channels, out_channels, kernel_size, stride):
-        self.residualLayer = nn.Sequential(nn.Conv1d(in_channels=in_channels,
-                                                     out_channels=out_channels,
-                                                     kernel_size=kernel_size,
-                                                     stride=1),
-                                           nn.InstanceNorm1d(
-                                               num_features=out_channels),
-                                           GLU(),
-                                           nn.Conv1d(in_channels=out_channels,
-                                                     out_channels=in_channels,
-                                                     kernel_size=kernel_size,
-                                                     stride=1),
-                                           nn.InstanceNorm1d(
-                                               num_features=in_channels),
-                                           )
+    def upSample(self, in_channels, out_channels, kernel_size, stride, padding):
+        self.convLayer = nn.Sequential(nn.Conv1d(in_channels=in_channels,
+                                                 out_channels=out_channels,
+                                                 kernel_size=kernel_size,
+                                                 stride=stride,
+                                                 padding=padding),
+                                       PixelShuffle(upscale_factor=2),
+                                       nn.InstanceNorm1d(
+                                           num_features=out_channels // 2),
+                                       GLU())
+        return self.convLayer
 
     def forward(self, input):
         conv1 = self.conv1(input)
@@ -104,7 +137,10 @@ class Generator(nn.Module):
         residual_layer_5 = self.residualLayer(residual_layer_4)
         residual_layer_6 = self.residualLayer(residual_layer_5)
         residual_layer_7 = self.residualLayer(residual_layer_6)
-        return residual_layer_7
+        upSample_layer_1 = self.upSample1(residual_layer_7)
+        upSample_layer_2 = self.upSample2(upSample_layer_1)
+        output = self.lastConvLayer(upSample_layer_2)
+        return output
 
 
 if __name__ == '__main__':
