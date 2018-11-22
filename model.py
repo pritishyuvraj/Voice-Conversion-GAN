@@ -6,8 +6,7 @@ class GLU(nn.Module):
     def __init__(self):
         super(GLU, self).__init__()
         # Custom Implementation because the Voice Conversion Cycle GAN
-        # paper assumes GLU won't reduce the dimension of tensor by 2. (
-        # Which is weird!!)
+        # paper assumes GLU won't reduce the dimension of tensor by 2.
 
     def forward(self, input):
         return input * torch.sigmoid(input)
@@ -17,7 +16,7 @@ class PixelShuffle(nn.Module):
     def __init__(self, upscale_factor):
         super(PixelShuffle, self).__init__()
         # Custom Implementation because PyTorch PixelShuffle requires,
-        # 4D input. Whereas, in this case we have have 3D arry
+        # 4D input. Whereas, in this case we have have 3D array
         self.upscale_factor = upscale_factor
 
     def forward(self, input):
@@ -143,8 +142,72 @@ class Generator(nn.Module):
         return output
 
 
+class Discriminator(nn.Module):
+    def __init__(self):
+        super(Discriminator, self).__init__()
+
+        self.convLayer1 = nn.Sequential(nn.Conv2d(in_channels=1,
+                                                  out_channels=128,
+                                                  kernel_size=[3, 3],
+                                                  stride=[1, 2],
+                                                  padding=2),
+                                        GLU())
+
+        # DownSample Layer
+        self.downSample1 = self.downSample(in_channels=128,
+                                           out_channels=256,
+                                           kernel_size=[3, 3],
+                                           stride=[2, 2],
+                                           padding=1)
+
+        self.downSample2 = self.downSample(in_channels=256,
+                                           out_channels=512,
+                                           kernel_size=[3, 3],
+                                           stride=[2, 2],
+                                           padding=1)
+
+        self.downSample3 = self.downSample(in_channels=512,
+                                           out_channels=1024,
+                                           kernel_size=[6, 3],
+                                           stride=[1, 2],
+                                           padding=1)
+
+        # Fully Connected Layer
+        self.fc = nn.Linear(in_features=1024 * 4 * 9,
+                            out_features=1)
+
+    def downSample(self, in_channels, out_channels, kernel_size, stride, padding):
+        convLayer = nn.Sequential(nn.Conv2d(in_channels=in_channels,
+                                            out_channels=out_channels,
+                                            kernel_size=kernel_size,
+                                            stride=stride,
+                                            padding=padding),
+                                  nn.InstanceNorm2d(num_features=out_channels),
+                                  GLU())
+        return convLayer
+
+    def forward(self, input):
+        # input has shape [batch_size, num_features, time]
+        # discriminator requires shape [batchSize, 1, num_features, time]
+        input = input.unsqueeze(1)
+        layer1 = self.convLayer1(input)
+        downSample1 = self.downSample1(layer1)
+        downSample2 = self.downSample2(downSample1)
+        downSample3 = self.downSample3(downSample2)
+        fc = self.fc(downSample3.view(downSample3.size(0), -1))
+        real_or_fake = torch.sigmoid(fc)
+        return real_or_fake
+
+
 if __name__ == '__main__':
-    input = torch.randn(1, 24, 128)
+    # Generator Dimensionality Testing
+    input = torch.randn(10, 24, 128)  # (N, C_in, Width) For Conv1d
     generator = Generator()
     output = generator(input)
     print("Output shape", output.shape)
+
+    # Discriminator Dimensionality Testing
+    # input = torch.randn(32, 1, 24, 128)  # (N, C_in, height, width) For Conv2d
+    discriminator = Discriminator()
+    output = discriminator(output)
+    print("Output shape", output.shape, output)
