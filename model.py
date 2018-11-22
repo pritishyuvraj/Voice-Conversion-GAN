@@ -148,32 +148,37 @@ class Discriminator(nn.Module):
 
         self.convLayer1 = nn.Sequential(nn.Conv2d(in_channels=1,
                                                   out_channels=128,
-                                                  kernel_size=[3, 3],
+                                                  kernel_size=[3, 4],
                                                   stride=[1, 2],
-                                                  padding=2),
+                                                  padding=[1, 1]),
                                         GLU())
+
+        # Note: Kernel Size have been modified in the PyTorch implementation
+        # compared to the actual paper, as to retain dimensionality. Unlike,
+        # TensorFlow, PyTorch doesn't have padding='same', hence, kernel sizes
+        # were altered to retain the dimensionality after each layer
 
         # DownSample Layer
         self.downSample1 = self.downSample(in_channels=128,
                                            out_channels=256,
-                                           kernel_size=[3, 3],
+                                           kernel_size=[4, 4],
                                            stride=[2, 2],
                                            padding=1)
 
         self.downSample2 = self.downSample(in_channels=256,
                                            out_channels=512,
-                                           kernel_size=[3, 3],
+                                           kernel_size=[4, 4],
                                            stride=[2, 2],
                                            padding=1)
 
         self.downSample3 = self.downSample(in_channels=512,
                                            out_channels=1024,
-                                           kernel_size=[6, 3],
+                                           kernel_size=[5, 4],
                                            stride=[1, 2],
-                                           padding=1)
+                                           padding=[2, 1])
 
         # Fully Connected Layer
-        self.fc = nn.Linear(in_features=1024 * 4 * 9,
+        self.fc = nn.Linear(in_features=1024,
                             out_features=1)
 
     def downSample(self, in_channels, out_channels, kernel_size, stride, padding):
@@ -194,9 +199,9 @@ class Discriminator(nn.Module):
         downSample1 = self.downSample1(layer1)
         downSample2 = self.downSample2(downSample1)
         downSample3 = self.downSample3(downSample2)
-        fc = self.fc(downSample3.view(downSample3.size(0), -1))
-        real_or_fake = torch.sigmoid(fc)
-        return real_or_fake
+        downSample3 = downSample3.contiguous().permute(0, 2, 3, 1).contiguous()
+        fc = torch.sigmoid(self.fc(downSample3))
+        return fc
 
 
 if __name__ == '__main__':
@@ -204,10 +209,10 @@ if __name__ == '__main__':
     input = torch.randn(10, 24, 128)  # (N, C_in, Width) For Conv1d
     generator = Generator()
     output = generator(input)
-    print("Output shape", output.shape)
+    print("Output shape Generator", output.shape)
 
     # Discriminator Dimensionality Testing
     # input = torch.randn(32, 1, 24, 128)  # (N, C_in, height, width) For Conv2d
     discriminator = Discriminator()
     output = discriminator(output)
-    print("Output shape", output.shape, output)
+    print("Output shape Discriminator", output.shape)

@@ -115,7 +115,7 @@ class CycleGANTraining:
                 d_loss_A_real = torch.mean((1 - d_real_A)**2)
                 d_loss_A_fake = torch.mean((0 - d_fake_A)**2)
                 d_loss_A = (d_loss_A_real + d_loss_A_fake) / 2.0
-                # print("D loss -> ", d_loss_A)
+
                 d_loss_B_real = torch.mean((1 - d_real_B)**2)
                 d_loss_B_fake = torch.mean((0 - d_fake_B)**2)
                 d_loss_B = (d_loss_B_real + d_loss_B_fake) / 2.0
@@ -126,9 +126,10 @@ class CycleGANTraining:
                 # Backprop for Discriminator
                 d_loss.backward()
                 self.discriminator_optimizer.step()
+
             end_time = time.time()
-            print("Iter: {} Generator Loss: {:.4f} Discriminator Loss: {}".format(
-                epoch, generator_loss.item(), d_loss.item()))
+            print("Epoch: {} Generator Loss: {:.4f} Discriminator Loss: {}, Time: {}".format(
+                epoch, generator_loss.item(), d_loss.item(), end_time - start_time_epoch))
 
     def savePickle(self, variable, fileName):
         with open(fileName, 'wb') as f:
