@@ -18,7 +18,7 @@ def load_pickle_file(fileName):
         return pickle.load(f)
 
 
-def preprocess_for_training(train_A_dir, train_B_dir):
+def preprocess_for_training(train_A_dir, train_B_dir, cache_folder):
     num_mcep = 24
     sampling_rate = 16000
     frame_period = 5.0
@@ -51,25 +51,25 @@ def preprocess_for_training(train_A_dir, train_B_dir):
     coded_sps_B_norm, coded_sps_B_mean, coded_sps_B_std = preprocess.coded_sps_normalization_fit_transform(
         coded_sps=coded_sps_B_transposed)
 
-    if not os.path.exists("../cache"):
-        os.makedirs("../cache")
+    if not os.path.exists(cache_folder):
+        os.makedirs(cache_folder)
 
-    np.savez(os.path.join("../cache", 'logf0s_normalization.npz'),
+    np.savez(os.path.join(cache_folder, 'logf0s_normalization.npz'),
              mean_A=log_f0s_mean_A,
              std_A=log_f0s_std_A,
              mean_B=log_f0s_mean_B,
              std_B=log_f0s_std_B)
 
-    np.savez(os.path.join("../cache", 'mcep_normalization.npz'),
+    np.savez(os.path.join(cache_folder, 'mcep_normalization.npz'),
              mean_A=coded_sps_A_mean,
              std_A=coded_sps_A_std,
              mean_B=coded_sps_B_mean,
              std_B=coded_sps_B_std)
 
     save_pickle(variable=coded_sps_A_norm,
-                fileName=os.path.join("../cache", "coded_sps_A_norm.pickle"))
+                fileName=os.path.join(cache_folder, "coded_sps_A_norm.pickle"))
     save_pickle(variable=coded_sps_B_norm,
-                fileName=os.path.join("../cache", "coded_sps_B_norm.pickle"))
+                fileName=os.path.join(cache_folder, "coded_sps_B_norm.pickle"))
 
     end_time = time.time()
     print("Preprocessing finsihed!! see your directory ../cache for cached preprocessed data")
@@ -83,14 +83,18 @@ if __name__ == '__main__':
         description='Prepare data for training Cycle GAN using PyTorch')
     train_A_dir_default = '../data/vcc2016_training/SF1/'
     train_B_dir_default = '../data/vcc2016_training/TF2/'
+    cache_folder_default = '../cache_check/'
 
     parser.add_argument('--train_A_dir', type=str,
                         help="Directory for source voice sample", default=train_A_dir_default)
     parser.add_argument('--train_B_dir', type=str,
                         help="Directory for target voice sample", default=train_B_dir_default)
+    parser.add_argument('--cache_folder', type=str,
+                        help="Store preprocessed data in cache folders", default=cache_folder_default)
     argv = parser.parse_args()
 
     train_A_dir = argv.train_A_dir
     train_B_dir = argv.train_B_dir
+    cache_folder = argv.cache_folder
 
-    preprocess_for_training(train_A_dir, train_B_dir)
+    preprocess_for_training(train_A_dir, train_B_dir, cache_folder)
