@@ -9,7 +9,8 @@ from model import Generator, Discriminator
 
 
 class CycleGANTraining:
-    def __init__(self, logf0s_normalization, mcep_normalization, coded_sps_A_norm, coded_sps_B_norm):
+    def __init__(self, logf0s_normalization, mcep_normalization, coded_sps_A_norm, coded_sps_B_norm, model_checkpoint, restart_training_at=None):
+        self.start_epoch = 0
         self.num_epochs = 5000
         self.mini_batch_size = 1
         self.dataset_A = self.loadPickleFile(coded_sps_A_norm)
@@ -37,13 +38,20 @@ class CycleGANTraining:
         self.discriminator_optimizer = torch.optim.Adam(
             d_params, lr=0.0001, betas=(0.5, 0.999))
 
+        self.modelCheckpoint = model_checkpoint
+
+        if restart_training_at is not None:
+            # Training will resume from previous checkpoint
+            self.start_epoch = self.loadModel(restart_training_at)
+            print("Training resumed")
+
     def reset_grad(self):
         self.generator_optimizer.zero_grad()
         self.discriminator_optimizer.zero_grad()
 
     def train(self):
         # Training Begins
-        for epoch in range(self.num_epochs):
+        for epoch in range(self.start_epoch, self.num_epochs):
             start_time_epoch = time.time()
 
             # Constants
@@ -130,6 +138,12 @@ class CycleGANTraining:
             end_time = time.time()
             print("Epoch: {} Generator Loss: {:.4f} Discriminator Loss: {}, Time: {}".format(
                 epoch, generator_loss.item(), d_loss.item(), end_time - start_time_epoch))
+            if epoch % 200 == 0 and epoch != 0:
+                # Save the Entire model
+                print("Saving model Checkpoint  ......")
+                self.saveModelCheckPoint(epoch, '{}'.format(
+                    self.modelCheckpoint + '_CycleGAN_CheckPoint_' + str(epoch)))
+                print("Model Saved!")
 
     def savePickle(self, variable, fileName):
         with open(fileName, 'wb') as f:
@@ -138,6 +152,34 @@ class CycleGANTraining:
     def loadPickleFile(self, fileName):
         with open(fileName, 'rb') as f:
             return pickle.load(f)
+
+    def saveModelCheckPoint(self, epoch, PATH):
+        torch.save({
+            'epoch': epoch,
+            'model_genA2B_state_dict': self.generator_A2B.state_dict(),
+            'model_genB2A_state_dict': self.generator_B2A.state_dict(),
+            'model_discriminatorA': self.discriminator_A.state_dict(),
+            'model_discriminatorB': self.discriminator_B.state_dict(),
+            'generator_optimizer': self.generator_optimizer.state_dict(),
+            'discriminator_optimizer': self.discriminator_optimizer.state_dict()
+        }, PATH)
+
+    def loadModel(self, PATH):
+        checkPoint = torch.load(PATH)
+        self.generator_A2B.load_state_dict(
+            state_dict=checkPoint['model_genA2B_state_dict'])
+        self.generator_B2A.load_state_dict(
+            state_dict=checkPoint['model_genB2A_state_dict'])
+        self.discriminator_A.load_state_dict(
+            state_dict=checkPoint['model_discriminatorA'])
+        self.discriminator_B.load_state_dict(
+            state_dict=checkPoint['model_discriminatorB'])
+        self.generator_optimizer.load_state_dict(
+            state_dict=checkPoint['generator_optimizer'])
+        self.discriminator_optimizer.load_state_dict(
+            state_dict=checkPoint['discriminator_optimizer'])
+        epoch = checkPoint['epoch']
+        return epoch
 
 
 if __name__ == '__main__':
@@ -148,6 +190,9 @@ if __name__ == '__main__':
     mcep_normalization_default = '../cache/mcep_normalization.npz'
     coded_sps_A_norm = '../cache/coded_sps_A_norm.pickle'
     coded_sps_B_norm = '../cache/coded_sps_B_norm.pickle'
+    model_checkpoint = '../cache/model_checkpoint/'
+    resume_training_at = '../cache/model_checkpoint/_CycleGAN_CheckPoint_6'
+    # resume_training_at = None
 
     parser.add_argument('--logf0s_normalization', type=str,
                         help="Cached location for log f0s normalized", default=logf0s_normalization_default)
@@ -157,6 +202,11 @@ if __name__ == '__main__':
                         help="mcep norm for data A", default=coded_sps_A_norm)
     parser.add_argument('--coded_sps_B_norm', type=str,
                         help="mcep norm for data B", default=coded_sps_B_norm)
+    parser.add_argument('--model_checkpoint', type=str,
+                        help="location where you want to save the odel", default=model_checkpoint)
+    parser.add_argument('--resume_training_at', type=str,
+                        help="Location of the pre-trained model to resume training",
+                        default=resume_training_at)
 
     argv = parser.parse_args()
 
@@ -164,6 +214,8 @@ if __name__ == '__main__':
     mcep_normalization = argv.mcep_normalization
     coded_sps_A_norm = argv.coded_sps_A_norm
     coded_sps_B_norm = argv.coded_sps_B_norm
+    model_checkpoint = argv.model_checkpoint
+    resume_training_at = argv.resume_training_at
 
     # Check whether following cached files exists
     if not os.path.exists(logf0s_normalization) or not os.path.exists(mcep_normalization):
@@ -173,5 +225,7 @@ if __name__ == '__main__':
     cycleGAN = CycleGANTraining(logf0s_normalization=logf0s_normalization,
                                 mcep_normalization=mcep_normalization,
                                 coded_sps_A_norm=coded_sps_A_norm,
-                                coded_sps_B_norm=coded_sps_B_norm)
+                                coded_sps_B_norm=coded_sps_B_norm,
+                                model_checkpoint=model_checkpoint,
+                                restart_training_at=resume_training_at)
     cycleGAN.train()
