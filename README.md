@@ -1,5 +1,8 @@
 # Voice-Conversion-GAN
-Voice Conversion using Cycle GAN's (PyTorch Implementation)
+Voice Conversion using Cycle GAN's (PyTorch Implementation). Architecture of the Cycle GAN is as follows:
+<p align="center">
+  <img src="./figures/cycleGAN.png" width="100%">
+</p>
 
 ## Dependencies
 
@@ -40,7 +43,7 @@ $ python download.py --download_dir ./download --data_dir ./data --datasets vcc2
 Preprocess voice data and stores it in numpy format in ../cache folder
 ```bash
 $ python prepocess_training.py --help
-sage: preprocess_training.py [-h] [--train_A_dir TRAIN_A_DIR]
+Usage: preprocess_training.py [-h] [--train_A_dir TRAIN_A_DIR]
                               [--train_B_dir TRAIN_B_DIR]
                               [--cache_folder CACHE_FOLDER]
 
@@ -65,6 +68,7 @@ $ python prepocess_training.py --train_A_dir ../data/vcc2016_training/SF1
 ### Train Model
 
 ```bash
+$python train.py --help
 usage: train.py [-h] [--logf0s_normalization LOGF0S_NORMALIZATION]
                 [--mcep_normalization MCEP_NORMALIZATION]
                 [--coded_sps_A_norm CODED_SPS_A_NORM]
@@ -110,12 +114,12 @@ $python train.py --logf0s_normalization ../cache/logf0s_normalization.npz --mcep
 ## Reference
 
 * Takuhiro Kaneko, Hirokazu Kameoka. Parallel-Data-Free Voice Conversion Using Cycle-Consistent Adversarial Networks. 2017. (Voice Conversion CycleGAN)
-* [TensorFLow Implementation] https://github.com/leimao/Voice_Converter_CycleGAN
+* [TensorFLow Implementation](https://github.com/leimao/Voice_Converter_CycleGAN)
 
 ## To-Do List
- - [] CPU compatible
- - [] Sample Outputs
- - [] Evaluation Metrics
+ - [x] CPU compatible
+ - [ ] Sample Outputs
+ - [ ] Evaluation Metrics
 
 ### Useful Tutorials
 
