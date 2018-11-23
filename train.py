@@ -96,6 +96,8 @@ class CycleGANTraining:
             identity_loss_lambda = 5
 
             # Preparing Dataset
+            n_samples = len(self.dataset_A)
+
             dataset = trainingDataset(datasetA=self.dataset_A,
                                       datasetB=self.dataset_B,
                                       n_frames=128)
@@ -105,6 +107,13 @@ class CycleGANTraining:
                                                        drop_last=False)
 
             for i, (real_A, real_B) in enumerate(train_loader):
+
+                num_iterations = (
+                    n_samples // self.mini_batch_size) * epoch + i
+                # print("iteration no: ", num_iterations, epoch)
+
+                if num_iterations > 10000:
+                    identity_loss_lambda = 0
 
                 real_A = real_A.to(self.device).float()
                 real_B = real_B.to(self.device).float()
@@ -351,7 +360,7 @@ if __name__ == '__main__':
     coded_sps_B_norm = '../cache/coded_sps_B_norm.pickle'
     model_checkpoint = '../cache/model_checkpoint/'
     resume_training_at = '../cache/model_checkpoint/_CycleGAN_CheckPoint'
-    # resume_training_at = None
+    resume_training_at = None
 
     validation_A_dir_default = '../data/vcc2016_training/evaluation_all/SF1/'
     output_A_dir_default = '../data/vcc2016_training/converted_sound/SF1'
