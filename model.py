@@ -206,7 +206,7 @@ class Discriminator(nn.Module):
 
 if __name__ == '__main__':
     # Generator Dimensionality Testing
-    input = torch.randn(10, 24, 128)  # (N, C_in, Width) For Conv1d
+    input = torch.randn(10, 24, 1100)  # (N, C_in, Width) For Conv1d
     generator = Generator()
     output = generator(input)
     print("Output shape Generator", output.shape)

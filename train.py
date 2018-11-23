@@ -3,13 +3,26 @@ import numpy as np
 import argparse
 import torch
 import time
+import librosa
 import pickle
+
+import preprocess
 from trainingDataset import trainingDataset
 from model import Generator, Discriminator
 
 
 class CycleGANTraining:
-    def __init__(self, logf0s_normalization, mcep_normalization, coded_sps_A_norm, coded_sps_B_norm, model_checkpoint, restart_training_at=None):
+    def __init__(self,
+                 logf0s_normalization,
+                 mcep_normalization,
+                 coded_sps_A_norm,
+                 coded_sps_B_norm,
+                 model_checkpoint,
+                 validation_A_dir,
+                 output_A_dir,
+                 validation_B_dir,
+                 output_B_dir,
+                 restart_training_at=None):
         self.start_epoch = 0
         self.num_epochs = 5000
         self.mini_batch_size = 1
@@ -17,6 +30,19 @@ class CycleGANTraining:
         self.dataset_B = self.loadPickleFile(coded_sps_B_norm)
         self.device = torch.device(
             'cuda' if torch.cuda.is_available() else 'cpu')
+
+        # Speech Parameters
+        logf0s_normalization = np.load(logf0s_normalization)
+        self.log_f0s_mean_A = logf0s_normalization['mean_A']
+        self.log_f0s_std_A = logf0s_normalization['std_A']
+        self.log_f0s_mean_B = logf0s_normalization['mean_B']
+        self.log_f0s_std_B = logf0s_normalization['std_B']
+
+        mcep_normalization = np.load(mcep_normalization)
+        self.coded_sps_A_mean = mcep_normalization['mean_A']
+        self.coded_sps_A_std = mcep_normalization['std_A']
+        self.coded_sps_B_mean = mcep_normalization['mean_B']
+        self.coded_sps_B_std = mcep_normalization['std_B']
 
         # Generator and Discriminator
         self.generator_A2B = Generator().to(self.device)
@@ -38,7 +64,18 @@ class CycleGANTraining:
         self.discriminator_optimizer = torch.optim.Adam(
             d_params, lr=0.0001, betas=(0.5, 0.999))
 
+        # To Load save previously saved models
         self.modelCheckpoint = model_checkpoint
+
+        # Validation set Parameters
+        self.validation_A_dir = validation_A_dir
+        self.output_A_dir = output_A_dir
+        self.validation_B_dir = validation_B_dir
+        self.output_B_dir = output_B_dir
+
+        # Storing Discriminatior and Generator Loss
+        self.generator_loss_store = []
+        self.discriminator_loss_store = []
 
         if restart_training_at is not None:
             # Training will resume from previous checkpoint
@@ -101,6 +138,7 @@ class CycleGANTraining:
                 # Total Generator Loss
                 generator_loss = generator_loss_A2B + generator_loss_B2A + \
                     cycle_loss_lambda * cycleLoss + identity_loss_lambda * identiyLoss
+                self.generator_loss_store.append(generator_loss.item())
 
                 # Backprop for Generator
                 generator_loss.backward()
@@ -130,20 +168,127 @@ class CycleGANTraining:
 
                 # Final Loss for discriminator
                 d_loss = (d_loss_A + d_loss_B) / 2.0
+                self.discriminator_loss_store.append(d_loss.item())
 
                 # Backprop for Discriminator
                 d_loss.backward()
                 self.discriminator_optimizer.step()
 
             end_time = time.time()
-            print("Epoch: {} Generator Loss: {:.4f} Discriminator Loss: {}, Time: {}".format(
+            print("Epoch: {} Generator Loss: {:.4f} Discriminator Loss: {:.6f}, Time: {:.2f}".format(
                 epoch, generator_loss.item(), d_loss.item(), end_time - start_time_epoch))
-            if epoch % 200 == 0 and epoch != 0:
+
+            if epoch % 100 == 0 and epoch != 0:
                 # Save the Entire model
                 print("Saving model Checkpoint  ......")
                 self.saveModelCheckPoint(epoch, '{}'.format(
-                    self.modelCheckpoint + '_CycleGAN_CheckPoint_' + str(epoch)))
+                    self.modelCheckpoint + '_CycleGAN_CheckPoint'))
                 print("Model Saved!")
+
+            if epoch % 100 == 0 and epoch != 0:
+                # Validation Set
+                validation_start_time = time.time()
+                self.validation_for_A_dir()
+                self.validation_for_B_dir()
+                validation_end_time = time.time()
+                print("Time taken for validation Set: {}".format(
+                    validation_end_time - validation_start_time))
+
+    def validation_for_A_dir(self):
+        num_mcep = 24
+        sampling_rate = 16000
+        frame_period = 5.0
+        n_frames = 128
+        validation_A_dir = self.validation_A_dir
+        output_A_dir = self.output_A_dir
+
+        print("Generating Validation Data B from A...")
+        for file in os.listdir(validation_A_dir):
+            filePath = os.path.join(validation_A_dir, file)
+            wav, _ = librosa.load(filePath, sr=sampling_rate, mono=True)
+            wav = preprocess.wav_padding(wav=wav,
+                                         sr=sampling_rate,
+                                         frame_period=frame_period,
+                                         multiple=4)
+            f0, timeaxis, sp, ap = preprocess.world_decompose(
+                wav=wav, fs=sampling_rate, frame_period=frame_period)
+            f0_converted = preprocess.pitch_conversion(f0=f0,
+                                                       mean_log_src=self.log_f0s_mean_A,
+                                                       std_log_src=self.log_f0s_std_A,
+                                                       mean_log_target=self.log_f0s_mean_B,
+                                                       std_log_target=self.log_f0s_std_B)
+            coded_sp = preprocess.world_encode_spectral_envelop(
+                sp=sp, fs=sampling_rate, dim=num_mcep)
+            coded_sp_transposed = coded_sp.T
+            coded_sp_norm = (coded_sp_transposed -
+                             self.coded_sps_A_mean) / self.coded_sps_A_std
+            coded_sp_norm = np.array([coded_sp_norm])
+            coded_sp_norm = torch.from_numpy(coded_sp_norm).cuda().float()
+            coded_sp_converted_norm = self.generator_A2B(coded_sp_norm)
+            coded_sp_converted_norm = coded_sp_converted_norm.cpu().detach().numpy()
+            coded_sp_converted_norm = np.squeeze(coded_sp_converted_norm)
+            coded_sp_converted = coded_sp_converted_norm * \
+                self.coded_sps_B_std + self.coded_sps_B_mean
+            coded_sp_converted = coded_sp_converted.T
+            coded_sp_converted = np.ascontiguousarray(coded_sp_converted)
+            decoded_sp_converted = preprocess.world_decode_spectral_envelop(
+                coded_sp=coded_sp_converted, fs=sampling_rate)
+            wav_transformed = preprocess.world_speech_synthesis(f0=f0_converted,
+                                                                decoded_sp=decoded_sp_converted,
+                                                                ap=ap,
+                                                                fs=sampling_rate,
+                                                                frame_period=frame_period)
+            librosa.output.write_wav(path=os.path.join(output_A_dir, os.path.basename(file)),
+                                     y=wav_transformed,
+                                     sr=sampling_rate)
+
+    def validation_for_B_dir(self):
+        num_mcep = 24
+        sampling_rate = 16000
+        frame_period = 5.0
+        n_frames = 128
+        validation_B_dir = self.validation_B_dir
+        output_B_dir = self.output_B_dir
+
+        print("Generating Validation Data A from B...")
+        for file in os.listdir(validation_B_dir):
+            filePath = os.path.join(validation_B_dir, file)
+            wav, _ = librosa.load(filePath, sr=sampling_rate, mono=True)
+            wav = preprocess.wav_padding(wav=wav,
+                                         sr=sampling_rate,
+                                         frame_period=frame_period,
+                                         multiple=4)
+            f0, timeaxis, sp, ap = preprocess.world_decompose(
+                wav=wav, fs=sampling_rate, frame_period=frame_period)
+            f0_converted = preprocess.pitch_conversion(f0=f0,
+                                                       mean_log_src=self.log_f0s_mean_B,
+                                                       std_log_src=self.log_f0s_std_B,
+                                                       mean_log_target=self.log_f0s_mean_A,
+                                                       std_log_target=self.log_f0s_std_A)
+            coded_sp = preprocess.world_encode_spectral_envelop(
+                sp=sp, fs=sampling_rate, dim=num_mcep)
+            coded_sp_transposed = coded_sp.T
+            coded_sp_norm = (coded_sp_transposed -
+                             self.coded_sps_B_mean) / self.coded_sps_B_std
+            coded_sp_norm = np.array([coded_sp_norm])
+            coded_sp_norm = torch.from_numpy(coded_sp_norm).cuda().float()
+            coded_sp_converted_norm = self.generator_B2A(coded_sp_norm)
+            coded_sp_converted_norm = coded_sp_converted_norm.cpu().detach().numpy()
+            coded_sp_converted_norm = np.squeeze(coded_sp_converted_norm)
+            coded_sp_converted = coded_sp_converted_norm * \
+                self.coded_sps_A_std + self.coded_sps_A_mean
+            coded_sp_converted = coded_sp_converted.T
+            coded_sp_converted = np.ascontiguousarray(coded_sp_converted)
+            decoded_sp_converted = preprocess.world_decode_spectral_envelop(
+                coded_sp=coded_sp_converted, fs=sampling_rate)
+            wav_transformed = preprocess.world_speech_synthesis(f0=f0_converted,
+                                                                decoded_sp=decoded_sp_converted,
+                                                                ap=ap,
+                                                                fs=sampling_rate,
+                                                                frame_period=frame_period)
+            librosa.output.write_wav(path=os.path.join(output_B_dir, os.path.basename(file)),
+                                     y=wav_transformed,
+                                     sr=sampling_rate)
 
     def savePickle(self, variable, fileName):
         with open(fileName, 'wb') as f:
@@ -156,6 +301,8 @@ class CycleGANTraining:
     def saveModelCheckPoint(self, epoch, PATH):
         torch.save({
             'epoch': epoch,
+            'generator_loss_store': self.generator_loss_store,
+            'discriminator_loss_store': self.discriminator_loss_store,
             'model_genA2B_state_dict': self.generator_A2B.state_dict(),
             'model_genB2A_state_dict': self.generator_B2A.state_dict(),
             'model_discriminatorA': self.discriminator_A.state_dict(),
@@ -178,7 +325,9 @@ class CycleGANTraining:
             state_dict=checkPoint['generator_optimizer'])
         self.discriminator_optimizer.load_state_dict(
             state_dict=checkPoint['discriminator_optimizer'])
-        epoch = checkPoint['epoch']
+        epoch = int(checkPoint['epoch']) + 1
+        self.generator_loss_store = checkPoint['generator_loss_store']
+        self.discriminator_loss_store = checkPoint['discriminator_loss_store']
         return epoch
 
 
@@ -191,8 +340,14 @@ if __name__ == '__main__':
     coded_sps_A_norm = '../cache/coded_sps_A_norm.pickle'
     coded_sps_B_norm = '../cache/coded_sps_B_norm.pickle'
     model_checkpoint = '../cache/model_checkpoint/'
-    resume_training_at = '../cache/model_checkpoint/_CycleGAN_CheckPoint_6'
+    resume_training_at = '../cache/model_checkpoint/_CycleGAN_CheckPoint'
     # resume_training_at = None
+
+    validation_A_dir_default = '../data/vcc2016_training/evaluation_all/SF1/'
+    output_A_dir_default = '../data/vcc2016_training/converted_sound/SF1'
+
+    validation_B_dir_default = '../data/vcc2016_training/evaluation_all/TF2/'
+    output_B_dir_default = '../data/vcc2016_training/converted_sound/TF2/'
 
     parser.add_argument('--logf0s_normalization', type=str,
                         help="Cached location for log f0s normalized", default=logf0s_normalization_default)
@@ -207,6 +362,14 @@ if __name__ == '__main__':
     parser.add_argument('--resume_training_at', type=str,
                         help="Location of the pre-trained model to resume training",
                         default=resume_training_at)
+    parser.add_argument('--validation_A_dir', type=str,
+                        help="validation set for sound source A", default=validation_A_dir_default)
+    parser.add_argument('--output_A_dir', type=str,
+                        help="output for converted Sound Source A", default=output_A_dir_default)
+    parser.add_argument('--validation_B_dir', type=str,
+                        help="Validation set for sound source B", default=validation_B_dir_default)
+    parser.add_argument('--output_B_dir', type=str,
+                        help="Output for converted sound Source B", default=output_B_dir_default)
 
     argv = parser.parse_args()
 
@@ -216,6 +379,11 @@ if __name__ == '__main__':
     coded_sps_B_norm = argv.coded_sps_B_norm
     model_checkpoint = argv.model_checkpoint
     resume_training_at = argv.resume_training_at
+
+    validation_A_dir = argv.validation_A_dir
+    output_A_dir = argv.output_A_dir
+    validation_B_dir = argv.validation_B_dir
+    output_B_dir = argv.output_B_dir
 
     # Check whether following cached files exists
     if not os.path.exists(logf0s_normalization) or not os.path.exists(mcep_normalization):
@@ -227,5 +395,9 @@ if __name__ == '__main__':
                                 coded_sps_A_norm=coded_sps_A_norm,
                                 coded_sps_B_norm=coded_sps_B_norm,
                                 model_checkpoint=model_checkpoint,
+                                validation_A_dir=validation_A_dir,
+                                output_A_dir=output_A_dir,
+                                validation_B_dir=validation_B_dir,
+                                output_B_dir=output_B_dir,
                                 restart_training_at=resume_training_at)
     cycleGAN.train()
