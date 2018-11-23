@@ -223,7 +223,12 @@ class CycleGANTraining:
             coded_sp_norm = (coded_sp_transposed -
                              self.coded_sps_A_mean) / self.coded_sps_A_std
             coded_sp_norm = np.array([coded_sp_norm])
-            coded_sp_norm = torch.from_numpy(coded_sp_norm).cuda().float()
+
+            if torch.cuda.is_available():
+                coded_sp_norm = torch.from_numpy(coded_sp_norm).cuda().float()
+            else:
+                coded_sp_norm = torch.from_numpy(coded_sp_norm).float()
+
             coded_sp_converted_norm = self.generator_A2B(coded_sp_norm)
             coded_sp_converted_norm = coded_sp_converted_norm.cpu().detach().numpy()
             coded_sp_converted_norm = np.squeeze(coded_sp_converted_norm)
@@ -271,7 +276,12 @@ class CycleGANTraining:
             coded_sp_norm = (coded_sp_transposed -
                              self.coded_sps_B_mean) / self.coded_sps_B_std
             coded_sp_norm = np.array([coded_sp_norm])
-            coded_sp_norm = torch.from_numpy(coded_sp_norm).cuda().float()
+
+            if torch.cuda.is_available():
+                coded_sp_norm = torch.from_numpy(coded_sp_norm).cuda().float()
+            else:
+                coded_sp_norm = torch.from_numpy(coded_sp_norm).float()
+
             coded_sp_converted_norm = self.generator_B2A(coded_sp_norm)
             coded_sp_converted_norm = coded_sp_converted_norm.cpu().detach().numpy()
             coded_sp_converted_norm = np.squeeze(coded_sp_converted_norm)
