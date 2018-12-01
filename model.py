@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch
+import numpy as np
 
 
 class GLU(nn.Module):
@@ -207,9 +208,14 @@ class Discriminator(nn.Module):
 if __name__ == '__main__':
     # Generator Dimensionality Testing
     input = torch.randn(10, 24, 1100)  # (N, C_in, Width) For Conv1d
+    np.random.seed(0)
+    print(np.random.randn(10))
+    input = np.random.randn(158, 24, 128)
+    input = torch.from_numpy(input).float()
+    print(input)
     generator = Generator()
     output = generator(input)
-    print("Output shape Generator", output.shape)
+    print("Output shape Generator", output)
 
     # Discriminator Dimensionality Testing
     # input = torch.randn(32, 1, 24, 128)  # (N, C_in, height, width) For Conv2d

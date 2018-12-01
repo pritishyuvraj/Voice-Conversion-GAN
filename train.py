@@ -23,7 +23,7 @@ class CycleGANTraining:
                  validation_B_dir,
                  output_B_dir,
                  restart_training_at=None):
-        self.start_epoch = 1000
+        self.start_epoch = 0
         self.num_epochs = 5000
         self.mini_batch_size = 1
         self.dataset_A = self.loadPickleFile(coded_sps_A_norm)
@@ -55,9 +55,9 @@ class CycleGANTraining:
 
         # Optimizer
         g_params = list(self.generator_A2B.parameters()) + \
-                   list(self.generator_B2A.parameters())
+            list(self.generator_B2A.parameters())
         d_params = list(self.discriminator_A.parameters()) + \
-                   list(self.discriminator_B.parameters())
+            list(self.discriminator_B.parameters())
 
         # Initial learning rates
         self.generator_lr = 0.0002
@@ -88,6 +88,8 @@ class CycleGANTraining:
         self.generator_loss_store = []
         self.discriminator_loss_store = []
 
+        self.file_name = 'log_store.txt'
+
         if restart_training_at is not None:
             # Training will resume from previous checkpoint
             self.start_epoch = self.loadModel(restart_training_at)
@@ -95,11 +97,13 @@ class CycleGANTraining:
 
     def adjust_lr_rate(self, optimizer, name='generator'):
         if name == 'generator':
-            self.generator_lr = max(0., self.generator_lr - self.generator_lr_decay)
+            self.generator_lr = max(
+                0., self.generator_lr - self.generator_lr_decay)
             for param_groups in optimizer.param_groups:
                 param_groups['lr'] = self.generator_lr
         else:
-            self.discriminator_lr = max(0., self.discriminator_lr - self.discriminator_lr_decay)
+            self.discriminator_lr = max(
+                0., self.discriminator_lr - self.discriminator_lr_decay)
             for param_groups in optimizer.param_groups:
                 param_groups['lr'] = self.discriminator_lr
 
@@ -130,7 +134,7 @@ class CycleGANTraining:
             for i, (real_A, real_B) in enumerate(train_loader):
 
                 num_iterations = (
-                                     n_samples // self.mini_batch_size) * epoch + i
+                    n_samples // self.mini_batch_size) * epoch + i
                 # print("iteration no: ", num_iterations, epoch)
 
                 if num_iterations > 10000:
@@ -140,7 +144,7 @@ class CycleGANTraining:
                 real_B = real_B.to(self.device).float()
 
                 # Generator Loss function
-                self.reset_grad()
+
                 fake_B = self.generator_A2B(real_A)
                 cycle_A = self.generator_B2A(fake_B)
 
@@ -167,19 +171,20 @@ class CycleGANTraining:
 
                 # Total Generator Loss
                 generator_loss = generator_loss_A2B + generator_loss_B2A + \
-                                 cycle_loss_lambda * cycleLoss + identity_loss_lambda * identiyLoss
+                    cycle_loss_lambda * cycleLoss + identity_loss_lambda * identiyLoss
                 self.generator_loss_store.append(generator_loss.item())
 
                 # Backprop for Generator
+                self.reset_grad()
                 generator_loss.backward()
 
                 if num_iterations > self.start_decay:  # Linearly decay learning rate
-                    self.adjust_lr_rate(self.generator_optimizer, name='generator')
+                    self.adjust_lr_rate(
+                        self.generator_optimizer, name='generator')
 
                 self.generator_optimizer.step()
 
                 # Discriminator Loss Function
-                self.reset_grad()
 
                 # Discriminator Feed Forward
                 d_real_A = self.discriminator_A(real_A)
@@ -205,20 +210,32 @@ class CycleGANTraining:
                 self.discriminator_loss_store.append(d_loss.item())
 
                 # Backprop for Discriminator
+                self.reset_grad()
                 d_loss.backward()
 
                 if num_iterations > self.start_decay:  # Linearly decay learning rate
-                    self.adjust_lr_rate(self.discriminator_optimizer, name='discriminator')
+                    self.adjust_lr_rate(
+                        self.discriminator_optimizer, name='discriminator')
 
                 self.discriminator_optimizer.step()
-
+                if i % 50 == 0:
+                    store_to_file = "Iter: {} Generator Loss: {:.4f} Discriminator Loss: {:.4f}".format(
+                        num_iterations, generator_loss.item(), d_loss.item())
+                    print("Iter: {} Generator Loss: {:.4f} Discriminator Loss: {:.4f}".format(
+                        num_iterations, generator_loss.item(), d_loss.item()))
+                    self.store_to_file(store_to_file)
             end_time = time.time()
-            print("Epoch: {} Generator Loss: {:.4f} Discriminator Loss: {:.6f}, Time: {:.2f}".format(
+            store_to_file = "Epoch: {} Generator Loss: {:.4f} Discriminator Loss: {}, Time: {:.2f}\n\n".format(
+                epoch, generator_loss.item(), d_loss.item(), end_time - start_time_epoch)
+            self.store_to_file(store_to_file)
+            print("Epoch: {} Generator Loss: {:.4f} Discriminator Loss: {}, Time: {:.2f}\n\n".format(
                 epoch, generator_loss.item(), d_loss.item(), end_time - start_time_epoch))
 
             if epoch % 100 == 0 and epoch != 0:
                 # Save the Entire model
                 print("Saving model Checkpoint  ......")
+                store_to_file = "Saving model Checkpoint  ......"
+                self.store_to_file(store_to_file)
                 self.saveModelCheckPoint(epoch, '{}'.format(
                     self.modelCheckpoint + '_CycleGAN_CheckPoint'))
                 print("Model Saved!")
@@ -229,6 +246,9 @@ class CycleGANTraining:
                 self.validation_for_A_dir()
                 self.validation_for_B_dir()
                 validation_end_time = time.time()
+                store_to_file = "Time taken for validation Set: {}".format(
+                    validation_end_time - validation_start_time)
+                self.store_to_file(store_to_file)
                 print("Time taken for validation Set: {}".format(
                     validation_end_time - validation_start_time))
 
@@ -271,7 +291,7 @@ class CycleGANTraining:
             coded_sp_converted_norm = coded_sp_converted_norm.cpu().detach().numpy()
             coded_sp_converted_norm = np.squeeze(coded_sp_converted_norm)
             coded_sp_converted = coded_sp_converted_norm * \
-                                 self.coded_sps_B_std + self.coded_sps_B_mean
+                self.coded_sps_B_std + self.coded_sps_B_mean
             coded_sp_converted = coded_sp_converted.T
             coded_sp_converted = np.ascontiguousarray(coded_sp_converted)
             decoded_sp_converted = preprocess.world_decode_spectral_envelop(
@@ -324,7 +344,7 @@ class CycleGANTraining:
             coded_sp_converted_norm = coded_sp_converted_norm.cpu().detach().numpy()
             coded_sp_converted_norm = np.squeeze(coded_sp_converted_norm)
             coded_sp_converted = coded_sp_converted_norm * \
-                                 self.coded_sps_A_std + self.coded_sps_A_mean
+                self.coded_sps_A_std + self.coded_sps_A_mean
             coded_sp_converted = coded_sp_converted.T
             coded_sp_converted = np.ascontiguousarray(coded_sp_converted)
             decoded_sp_converted = preprocess.world_decode_spectral_envelop(
@@ -345,6 +365,11 @@ class CycleGANTraining:
     def loadPickleFile(self, fileName):
         with open(fileName, 'rb') as f:
             return pickle.load(f)
+
+    def store_to_file(self, doc):
+        doc = doc + "\n"
+        with open(self.file_name, "a") as myfile:
+            myfile.write(doc)
 
     def saveModelCheckPoint(self, epoch, PATH):
         torch.save({
