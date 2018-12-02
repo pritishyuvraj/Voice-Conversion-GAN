@@ -275,9 +275,9 @@ class Discriminator(nn.Module):
         downSample2 = self.downSample2(downSample1)
         downSample3 = self.downSample3(downSample2)
         downSample3 = downSample3.contiguous().permute(0, 2, 3, 1).contiguous()
-        fc = torch.sigmoid(self.fc(downSample3))
+        # fc = torch.sigmoid(self.fc(downSample3))
         # Taking off sigmoid layer to avoid vanishing gradient problem
-        # fc = self.fc(downSample3)
+        fc = self.fc(downSample3)
         return fc
 
 
