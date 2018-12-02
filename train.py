@@ -8,7 +8,7 @@ import pickle
 
 import preprocess
 from trainingDataset import trainingDataset
-from model import Generator, Discriminator
+from model_GLU import Generator, Discriminator
 
 
 class CycleGANTraining:
@@ -68,7 +68,7 @@ class CycleGANTraining:
         self.discriminator_lr_decay = self.discriminator_lr / 200000
 
         # Starts learning rate decay from after this many iterations have passed
-        self.start_decay = 160000
+        self.start_decay = 200000
 
         self.generator_optimizer = torch.optim.Adam(
             g_params, lr=self.generator_lr, betas=(0.5, 0.999))
@@ -138,7 +138,7 @@ class CycleGANTraining:
                 # print("iteration no: ", num_iterations, epoch)
 
                 if num_iterations > 10000:
-                    identity_loss_lambda = 0
+                    identity_loss_lambda = 1
 
                 real_A = real_A.to(self.device).float()
                 real_B = real_B.to(self.device).float()
@@ -412,15 +412,15 @@ if __name__ == '__main__':
     mcep_normalization_default = '../cache/mcep_normalization.npz'
     coded_sps_A_norm = '../cache/coded_sps_A_norm.pickle'
     coded_sps_B_norm = '../cache/coded_sps_B_norm.pickle'
-    model_checkpoint = '../cache/model_checkpoint/'
+    model_checkpoint = '../cache/model_checkpoint_modified/'
     resume_training_at = '../cache/model_checkpoint/_CycleGAN_CheckPoint'
     resume_training_at = None
 
     validation_A_dir_default = '../data/vcc2016_training/evaluation_all/SF1/'
-    output_A_dir_default = '../data/vcc2016_training/converted_sound/SF1'
+    output_A_dir_default = '../data/vcc2016_training/converted_sound_modified/SF1'
 
     validation_B_dir_default = '../data/vcc2016_training/evaluation_all/TF2/'
-    output_B_dir_default = '../data/vcc2016_training/converted_sound/TF2/'
+    output_B_dir_default = '../data/vcc2016_training/converted_sound_modified/TF2/'
 
     parser.add_argument('--logf0s_normalization', type=str,
                         help="Cached location for log f0s normalized", default=logf0s_normalization_default)
@@ -431,7 +431,7 @@ if __name__ == '__main__':
     parser.add_argument('--coded_sps_B_norm', type=str,
                         help="mcep norm for data B", default=coded_sps_B_norm)
     parser.add_argument('--model_checkpoint', type=str,
-                        help="location where you want to save the odel", default=model_checkpoint)
+                        help="location where you want to save the model", default=model_checkpoint)
     parser.add_argument('--resume_training_at', type=str,
                         help="Location of the pre-trained model to resume training",
                         default=resume_training_at)
