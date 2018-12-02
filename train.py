@@ -88,7 +88,7 @@ class CycleGANTraining:
         self.generator_loss_store = []
         self.discriminator_loss_store = []
 
-        self.file_name = 'log_store.txt'
+        self.file_name = 'log_store_new_.txtmodel.txt'
 
         if restart_training_at is not None:
             # Training will resume from previous checkpoint
