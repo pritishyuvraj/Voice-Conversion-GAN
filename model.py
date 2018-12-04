@@ -37,7 +37,8 @@ class ResidualLayer(nn.Module):
                                                      stride=1,
                                                      padding=padding),
                                            nn.InstanceNorm1d(
-                                               num_features=out_channels),
+                                               num_features=out_channels,
+                                               affine=True),
                                            GLU(),
                                            nn.Conv1d(in_channels=out_channels,
                                                      out_channels=in_channels,
@@ -45,7 +46,8 @@ class ResidualLayer(nn.Module):
                                                      stride=1,
                                                      padding=padding),
                                            nn.InstanceNorm1d(
-                                               num_features=in_channels)
+                                               num_features=in_channels,
+                                               affine=True)
                                            )
 
     def forward(self, input):
@@ -109,7 +111,8 @@ class Generator(nn.Module):
                                                  stride=stride,
                                                  padding=padding),
                                        nn.InstanceNorm1d(
-                                       num_features=out_channels),
+                                       num_features=out_channels,
+                                       affine=True),
                                        GLU())
 
         return self.ConvLayer
@@ -122,7 +125,8 @@ class Generator(nn.Module):
                                                  padding=padding),
                                        PixelShuffle(upscale_factor=2),
                                        nn.InstanceNorm1d(
-                                           num_features=out_channels // 2),
+                                           num_features=out_channels // 2,
+                                           affine=True),
                                        GLU())
         return self.convLayer
 
@@ -188,7 +192,8 @@ class Discriminator(nn.Module):
                                             kernel_size=kernel_size,
                                             stride=stride,
                                             padding=padding),
-                                  nn.InstanceNorm2d(num_features=out_channels),
+                                  nn.InstanceNorm2d(num_features=out_channels,
+                                                    affine=True),
                                   GLU())
         return convLayer
 

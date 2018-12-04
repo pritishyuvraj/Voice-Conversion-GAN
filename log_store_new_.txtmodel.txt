@@ -1,0 +1,10 @@
+Iter: 0 Generator Loss: 27.2510 Discriminator Loss: 0.5571
+Iter: 50 Generator Loss: 27.2145 Discriminator Loss: 0.1918
+Iter: 100 Generator Loss: 29.5318 Discriminator Loss: 0.0815
+Iter: 150 Generator Loss: 29.9052 Discriminator Loss: 0.0795
+Epoch: 0 Generator Loss: 27.6020 Discriminator Loss: 0.11661039292812347, Time: 133.35
+
+
+Iter: 162 Generator Loss: 30.2301 Discriminator Loss: 0.0691
+Iter: 212 Generator Loss: 26.5855 Discriminator Loss: 0.2049
+Iter: 262 Generator Loss: 29.5212 Discriminator Loss: 0.1041

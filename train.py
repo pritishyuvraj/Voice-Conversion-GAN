@@ -138,7 +138,12 @@ class CycleGANTraining:
                 # print("iteration no: ", num_iterations, epoch)
 
                 if num_iterations > 10000:
-                    identity_loss_lambda = 1
+                    identity_loss_lambda = 0
+                if num_iterations > self.start_decay:
+                    self.adjust_lr_rate(
+                        self.generator_optimizer, name='generator')
+                    self.adjust_lr_rate(
+                        self.generator_optimizer, name='discriminator')
 
                 real_A = real_A.to(self.device).float()
                 real_B = real_B.to(self.device).float()
@@ -178,9 +183,9 @@ class CycleGANTraining:
                 self.reset_grad()
                 generator_loss.backward()
 
-                if num_iterations > self.start_decay:  # Linearly decay learning rate
-                    self.adjust_lr_rate(
-                        self.generator_optimizer, name='generator')
+                # if num_iterations > self.start_decay:  # Linearly decay learning rate
+                #     self.adjust_lr_rate(
+                #         self.generator_optimizer, name='generator')
 
                 self.generator_optimizer.step()
 
@@ -213,9 +218,9 @@ class CycleGANTraining:
                 self.reset_grad()
                 d_loss.backward()
 
-                if num_iterations > self.start_decay:  # Linearly decay learning rate
-                    self.adjust_lr_rate(
-                        self.discriminator_optimizer, name='discriminator')
+                # if num_iterations > self.start_decay:  # Linearly decay learning rate
+                #     self.adjust_lr_rate(
+                #         self.discriminator_optimizer, name='discriminator')
 
                 self.discriminator_optimizer.step()
                 if i % 50 == 0:

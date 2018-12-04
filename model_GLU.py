@@ -120,9 +120,17 @@ class upSample_Generator(nn.Module):
                                        PixelShuffle(upscale_factor=2),
                                        nn.InstanceNorm1d(num_features=out_channels // 2,
                                                          affine=True))
+        self.convLayer_gates = nn.Sequential(nn.Conv1d(in_channels=in_channels,
+                                                       out_channels=out_channels,
+                                                       kernel_size=kernel_size,
+                                                       stride=stride,
+                                                       padding=padding),
+                                             PixelShuffle(upscale_factor=2),
+                                             nn.InstanceNorm1d(num_features=out_channels // 2,
+                                                               affine=True))
 
     def forward(self, input):
-        return self.convLayer(input) * torch.sigmoid(self.convLayer(input))
+        return self.convLayer(input) * torch.sigmoid(self.convLayer_gates(input))
 
 
 class Generator(nn.Module):
@@ -149,11 +157,36 @@ class Generator(nn.Module):
                                                 padding=2)
 
         # Residual Blocks
-        self.residualLayer = ResidualLayer(in_channels=512,
-                                           out_channels=1024,
-                                           kernel_size=3,
-                                           stride=1,
-                                           padding=1)
+        self.residualLayer1 = ResidualLayer(in_channels=512,
+                                            out_channels=1024,
+                                            kernel_size=3,
+                                            stride=1,
+                                            padding=1)
+        self.residualLayer2 = ResidualLayer(in_channels=512,
+                                            out_channels=1024,
+                                            kernel_size=3,
+                                            stride=1,
+                                            padding=1)
+        self.residualLayer3 = ResidualLayer(in_channels=512,
+                                            out_channels=1024,
+                                            kernel_size=3,
+                                            stride=1,
+                                            padding=1)
+        self.residualLayer4 = ResidualLayer(in_channels=512,
+                                            out_channels=1024,
+                                            kernel_size=3,
+                                            stride=1,
+                                            padding=1)
+        self.residualLayer5 = ResidualLayer(in_channels=512,
+                                            out_channels=1024,
+                                            kernel_size=3,
+                                            stride=1,
+                                            padding=1)
+        self.residualLayer6 = ResidualLayer(in_channels=512,
+                                            out_channels=1024,
+                                            kernel_size=3,
+                                            stride=1,
+                                            padding=1)
 
         # UpSample Layer
         self.upSample1 = upSample_Generator(in_channels=512,
@@ -180,12 +213,12 @@ class Generator(nn.Module):
 
         downsample1 = self.downSample1(conv1)
         downsample2 = self.downSample2(downsample1)
-        residual_layer_1 = self.residualLayer(downsample2)
-        residual_layer_2 = self.residualLayer(residual_layer_1)
-        residual_layer_3 = self.residualLayer(residual_layer_2)
-        residual_layer_4 = self.residualLayer(residual_layer_3)
-        residual_layer_5 = self.residualLayer(residual_layer_4)
-        residual_layer_6 = self.residualLayer(residual_layer_5)
+        residual_layer_1 = self.residualLayer1(downsample2)
+        residual_layer_2 = self.residualLayer2(residual_layer_1)
+        residual_layer_3 = self.residualLayer3(residual_layer_2)
+        residual_layer_4 = self.residualLayer4(residual_layer_3)
+        residual_layer_5 = self.residualLayer5(residual_layer_4)
+        residual_layer_6 = self.residualLayer6(residual_layer_5)
         upSample_layer_1 = self.upSample1(residual_layer_6)
         upSample_layer_2 = self.upSample2(upSample_layer_1)
         output = self.lastConvLayer(upSample_layer_2)
@@ -225,6 +258,11 @@ class Discriminator(nn.Module):
                                     kernel_size=[3, 4],
                                     stride=[1, 2],
                                     padding=[1, 1])
+        self.convLayer1_gates = nn.Conv2d(in_channels=1,
+                                          out_channels=128,
+                                          kernel_size=[3, 4],
+                                          stride=[1, 2],
+                                          padding=[1, 1])
 
         # Note: Kernel Size have been modified in the PyTorch implementation
         # compared to the actual paper, as to retain dimensionality. Unlike,
@@ -254,23 +292,24 @@ class Discriminator(nn.Module):
         self.fc = nn.Linear(in_features=1024,
                             out_features=1)
 
-    def downSample(self, in_channels, out_channels, kernel_size, stride, padding):
-        convLayer = nn.Sequential(nn.Conv2d(in_channels=in_channels,
-                                            out_channels=out_channels,
-                                            kernel_size=kernel_size,
-                                            stride=stride,
-                                            padding=padding),
-                                  nn.InstanceNorm2d(num_features=out_channels,
-                                                    affine=True),
-                                  GLU())
-        return convLayer
+    # def downSample(self, in_channels, out_channels, kernel_size, stride, padding):
+    #     convLayer = nn.Sequential(nn.Conv2d(in_channels=in_channels,
+    #                                         out_channels=out_channels,
+    #                                         kernel_size=kernel_size,
+    #                                         stride=stride,
+    #                                         padding=padding),
+    #                               nn.InstanceNorm2d(num_features=out_channels,
+    #                                                 affine=True),
+    #                               GLU())
+    #     return convLayer
 
     def forward(self, input):
         # input has shape [batch_size, num_features, time]
         # discriminator requires shape [batchSize, 1, num_features, time]
         input = input.unsqueeze(1)
         # GLU
-        layer1 = self.convLayer1(input) * torch.sigmoid(self.convLayer1(input))
+        layer1 = self.convLayer1(
+            input) * torch.sigmoid(self.convLayer1_gates(input))
         downSample1 = self.downSample1(layer1)
         downSample2 = self.downSample2(downSample1)
         downSample3 = self.downSample3(downSample2)
