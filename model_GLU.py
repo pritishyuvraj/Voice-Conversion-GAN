@@ -255,12 +255,12 @@ class Discriminator(nn.Module):
 
         self.convLayer1 = nn.Conv2d(in_channels=1,
                                     out_channels=128,
-                                    kernel_size=[3, 4],
+                                    kernel_size=[3, 3],
                                     stride=[1, 2],
                                     padding=[1, 1])
         self.convLayer1_gates = nn.Conv2d(in_channels=1,
                                           out_channels=128,
-                                          kernel_size=[3, 4],
+                                          kernel_size=[3, 3],
                                           stride=[1, 2],
                                           padding=[1, 1])
 
@@ -272,19 +272,19 @@ class Discriminator(nn.Module):
         # DownSample Layer
         self.downSample1 = DownSample_Discriminator(in_channels=128,
                                                     out_channels=256,
-                                                    kernel_size=[4, 4],
+                                                    kernel_size=[3, 3],
                                                     stride=[2, 2],
                                                     padding=1)
 
         self.downSample2 = DownSample_Discriminator(in_channels=256,
                                                     out_channels=512,
-                                                    kernel_size=[4, 4],
+                                                    kernel_size=[3, 3],
                                                     stride=[2, 2],
                                                     padding=1)
 
         self.downSample3 = DownSample_Discriminator(in_channels=512,
                                                     out_channels=1024,
-                                                    kernel_size=[5, 4],
+                                                    kernel_size=[6, 4],
                                                     stride=[1, 2],
                                                     padding=[2, 1])
 
@@ -314,9 +314,9 @@ class Discriminator(nn.Module):
         downSample2 = self.downSample2(downSample1)
         downSample3 = self.downSample3(downSample2)
         downSample3 = downSample3.contiguous().permute(0, 2, 3, 1).contiguous()
-        # fc = torch.sigmoid(self.fc(downSample3))
+        fc = torch.sigmoid(self.fc(downSample3))
         # Taking off sigmoid layer to avoid vanishing gradient problem
-        fc = self.fc(downSample3)
+        # fc = self.fc(downSample3)
         return fc
 
 
