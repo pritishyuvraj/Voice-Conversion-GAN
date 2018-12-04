@@ -31,24 +31,24 @@ class ResidualLayer(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, padding):
         super(ResidualLayer, self).__init__()
 
-        self.residualLayer = nn.Sequential(nn.Conv1d(in_channels=in_channels,
-                                                     out_channels=out_channels,
-                                                     kernel_size=kernel_size,
-                                                     stride=1,
-                                                     padding=padding),
-                                           nn.InstanceNorm1d(
-                                               num_features=out_channels,
-                                               affine=True),
-                                           GLU(),
-                                           nn.Conv1d(in_channels=out_channels,
-                                                     out_channels=in_channels,
-                                                     kernel_size=kernel_size,
-                                                     stride=1,
-                                                     padding=padding),
-                                           nn.InstanceNorm1d(
-                                               num_features=in_channels,
-                                               affine=True)
-                                           )
+        # self.residualLayer = nn.Sequential(nn.Conv1d(in_channels=in_channels,
+        #                                              out_channels=out_channels,
+        #                                              kernel_size=kernel_size,
+        #                                              stride=1,
+        #                                              padding=padding),
+        #                                    nn.InstanceNorm1d(
+        #                                        num_features=out_channels,
+        #                                        affine=True),
+        #                                    GLU(),
+        #                                    nn.Conv1d(in_channels=out_channels,
+        #                                              out_channels=in_channels,
+        #                                              kernel_size=kernel_size,
+        #                                              stride=1,
+        #                                              padding=padding),
+        #                                    nn.InstanceNorm1d(
+        #                                        num_features=in_channels,
+        #                                        affine=True)
+        #                                    )
 
         self.conv1d_layer = nn.Sequential(nn.Conv1d(in_channels=in_channels,
                                                     out_channels=out_channels,
@@ -143,6 +143,12 @@ class Generator(nn.Module):
                                stride=1,
                                padding=7)
 
+        self.conv1_gates = nn.Conv1d(in_channels=24,
+                               out_channels=128,
+                               kernel_size=15,
+                               stride=1,
+                               padding=7)
+
         # Downsample Layer
         self.downSample1 = downSample_Generator(in_channels=128,
                                                 out_channels=256,
@@ -209,7 +215,7 @@ class Generator(nn.Module):
 
     def forward(self, input):
         # GLU
-        conv1 = self.conv1(input) * torch.sigmoid(self.conv1(input))
+        conv1 = self.conv1(input) * torch.sigmoid(self.conv1_gates(input))
 
         downsample1 = self.downSample1(conv1)
         downsample2 = self.downSample2(downsample1)
@@ -255,14 +261,12 @@ class Discriminator(nn.Module):
 
         self.convLayer1 = nn.Conv2d(in_channels=1,
                                     out_channels=128,
-                                    kernel_size=[3, 4],
-                                    stride=[1, 2],
-                                    padding=[1, 1])
+                                    kernel_size=[3, 3],
+                                    stride=[1, 2])
         self.convLayer1_gates = nn.Conv2d(in_channels=1,
                                           out_channels=128,
-                                          kernel_size=[3, 4],
-                                          stride=[1, 2],
-                                          padding=[1, 1])
+                                          kernel_size=[3, 3],
+                                          stride=[1, 2])
 
         # Note: Kernel Size have been modified in the PyTorch implementation
         # compared to the actual paper, as to retain dimensionality. Unlike,
@@ -272,21 +276,21 @@ class Discriminator(nn.Module):
         # DownSample Layer
         self.downSample1 = DownSample_Discriminator(in_channels=128,
                                                     out_channels=256,
-                                                    kernel_size=[4, 4],
+                                                    kernel_size=[3, 3],
                                                     stride=[2, 2],
-                                                    padding=1)
+                                                    padding=0)
 
         self.downSample2 = DownSample_Discriminator(in_channels=256,
                                                     out_channels=512,
-                                                    kernel_size=[4, 4],
+                                                    kernel_size=[3, 3],
                                                     stride=[2, 2],
-                                                    padding=1)
+                                                    padding=0)
 
         self.downSample3 = DownSample_Discriminator(in_channels=512,
                                                     out_channels=1024,
-                                                    kernel_size=[5, 4],
+                                                    kernel_size=[6, 3],
                                                     stride=[1, 2],
-                                                    padding=[2, 1])
+                                                    padding=0)
 
         # Fully Connected Layer
         self.fc = nn.Linear(in_features=1024,
@@ -308,11 +312,19 @@ class Discriminator(nn.Module):
         # discriminator requires shape [batchSize, 1, num_features, time]
         input = input.unsqueeze(1)
         # GLU
+        pad_input = nn.ZeroPad2d((1, 0, 1, 1))
         layer1 = self.convLayer1(
-            input) * torch.sigmoid(self.convLayer1_gates(input))
-        downSample1 = self.downSample1(layer1)
-        downSample2 = self.downSample2(downSample1)
-        downSample3 = self.downSample3(downSample2)
+            pad_input(input)) * torch.sigmoid(self.convLayer1_gates(pad_input(input)))
+
+        pad_input = nn.ZeroPad2d((1, 0, 1, 0))
+        downSample1 = self.downSample1(pad_input(layer1))
+
+        pad_input = nn.ZeroPad2d((1, 0, 1, 0))
+        downSample2 = self.downSample2(pad_input(downSample1))
+
+        pad_input = nn.ZeroPad2d((1, 0, 3, 2))
+        downSample3 = self.downSample3(pad_input(downSample2))
+
         downSample3 = downSample3.contiguous().permute(0, 2, 3, 1).contiguous()
         # fc = torch.sigmoid(self.fc(downSample3))
         # Taking off sigmoid layer to avoid vanishing gradient problem
