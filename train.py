@@ -88,7 +88,7 @@ class CycleGANTraining:
         self.generator_loss_store = []
         self.discriminator_loss_store = []
 
-        self.file_name = 'log_store_sigmoid.txt'
+        self.file_name = 'log_store_non_sigmoid.txt'
 
         if restart_training_at is not None:
             # Training will resume from previous checkpoint
@@ -417,15 +417,15 @@ if __name__ == '__main__':
     mcep_normalization_default = '../cache/mcep_normalization.npz'
     coded_sps_A_norm = '../cache/coded_sps_A_norm.pickle'
     coded_sps_B_norm = '../cache/coded_sps_B_norm.pickle'
-    model_checkpoint = '../cache/model_checkpoint_modified/'
+    model_checkpoint = '../cache/model_checkpoint/'
     resume_training_at = '../cache/model_checkpoint/_CycleGAN_CheckPoint'
     resume_training_at = None
 
     validation_A_dir_default = '../data/vcc2016_training/evaluation_all/SF1/'
-    output_A_dir_default = '../data/vcc2016_training/converted_sound_modified/SF1'
+    output_A_dir_default = '../data/vcc2016_training/converted_sound/SF1'
 
     validation_B_dir_default = '../data/vcc2016_training/evaluation_all/TF2/'
-    output_B_dir_default = '../data/vcc2016_training/converted_sound_modified/TF2/'
+    output_B_dir_default = '../data/vcc2016_training/converted_sound/TF2/'
 
     parser.add_argument('--logf0s_normalization', type=str,
                         help="Cached location for log f0s normalized", default=logf0s_normalization_default)
