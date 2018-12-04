@@ -88,7 +88,7 @@ class CycleGANTraining:
         self.generator_loss_store = []
         self.discriminator_loss_store = []
 
-        self.file_name = 'log_store_new_.txtmodel.txt'
+        self.file_name = 'log_store_sigmoid.txt'
 
         if restart_training_at is not None:
             # Training will resume from previous checkpoint
@@ -223,11 +223,11 @@ class CycleGANTraining:
                 #         self.discriminator_optimizer, name='discriminator')
 
                 self.discriminator_optimizer.step()
-                if i % 50 == 0:
-                    store_to_file = "Iter: {} Generator Loss: {:.4f} Discriminator Loss: {:.4f}".format(
-                        num_iterations, generator_loss.item(), d_loss.item())
-                    print("Iter: {} Generator Loss: {:.4f} Discriminator Loss: {:.4f}".format(
-                        num_iterations, generator_loss.item(), d_loss.item()))
+                if num_iterations % 50 == 0:
+                    store_to_file = "Iter:{}\t Generator Loss:{:.4f} Discrimator Loss:{:.4f} \tGA2B:{:.4f} GB2A:{:.4f} G_id:{:.4f} G_cyc:{:.4f} D_A:{:.4f} D_B:{:.4f}".format(
+                        num_iterations, generator_loss.item(), d_loss.item(), generator_loss_A2B, generator_loss_B2A, identiyLoss, cycleLoss, d_loss_A, d_loss_B)
+                    print("Iter:{}\t Generator Loss:{:.4f} Discrimator Loss:{:.4f} \tGA2B:{:.4f} GB2A:{:.4f} G_id:{:.4f} G_cyc:{:.4f} D_A:{:.4f} D_B:{:.4f}".format(
+                        num_iterations, generator_loss.item(), d_loss.item(), generator_loss_A2B, generator_loss_B2A, identiyLoss, cycleLoss, d_loss_A, d_loss_B))
                     self.store_to_file(store_to_file)
             end_time = time.time()
             store_to_file = "Epoch: {} Generator Loss: {:.4f} Discriminator Loss: {}, Time: {:.2f}\n\n".format(
