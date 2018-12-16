@@ -7,11 +7,6 @@ class GAN:
         self.input_shape = [None, num_features, None]  # [batch_size, num_features, num_frames]
 
     def build_model(self):
-        '''
-        Build tensorflow graph here sess.run() call is here
-        Call helper function train.py to train the model
-        :return:
-        '''
         pass
 
     def save_model(self):
@@ -21,16 +16,7 @@ class GAN:
         pass
 
     def train_model(self):
-        '''
-        Model training here -- both train and validation data
-        Definition of cycle loss is here rather than in losses.py
-        :return:
-        '''
         pass
 
     def evaluate_model(self):
-        '''
-        Prediction for test data
-        :return:
-        '''
         pass
