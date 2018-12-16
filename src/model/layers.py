@@ -74,6 +74,9 @@ class Residual1DBlock:
 
 
 class Downsample1DBlock:
+    """
+    Creates a downsample 1d block for the model generator
+    """
     def __init__(self, filters, kernel_size, strides, activation=None, kernel_init=None):
         """
         :param filters: Defines number of out channels
@@ -116,6 +119,9 @@ class Downsample1DBlock:
 
 
 class Downsample2DBlock:
+    """
+    Creates a downsample 2d block for the model generator
+    """
     def __init__(self, filters, kernel_size, strides, name_prefix, activation=None, kernel_init=None):
         """
         :param filters: Defines number of out channels
@@ -158,6 +164,9 @@ class Downsample2DBlock:
 
 
 class Upsample1DBlock:
+    """
+    Creates a upsample 1d block for the model generator
+    """
     def __init__(self, filters, kernel_size, strides, name_prefix, shuffle_size=2, activation=None, kernel_init=None):
         """
         :param filters: Defines number of out channels

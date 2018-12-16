@@ -3,6 +3,9 @@ from src.model.layers import Residual1DBlock, Upsample1DBlock, Downsample1DBlock
 
 
 class Generator:
+    """
+    Gated CNN generator network
+    """
     def __init__(self):
         pass
 

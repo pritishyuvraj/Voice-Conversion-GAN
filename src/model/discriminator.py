@@ -3,6 +3,9 @@ from src.model.layers import Downsample2DBlock
 
 
 class Discriminator:
+    """
+    Discriminator network
+    """
     def __init__(self):
         pass
 
