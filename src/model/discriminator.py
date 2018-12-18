@@ -1,13 +1,12 @@
 import tensorflow as tf
-from src.model.layers import Downsample2DBlock
+from layers import Downsample2DBlock
+import numpy as np
 
 
 class Discriminator:
     """
     Discriminator network
     """
-    def __init__(self):
-        pass
 
     def forward(self, inputs, reuse=False, scope_name='discriminator'):
 
@@ -39,3 +38,12 @@ class Discriminator:
             out = tf.layers.dense(inputs=d3, units=1, activation=tf.nn.sigmoid)
 
             return out
+
+
+if __name__ == '__main__':
+    tf.reset_default_graph()
+    array = np.random.randn(1, 24, 128)
+    discriminator = Discriminator().forward(array, reuse=False, scope_name='disc1')
+    discriminator1 = Discriminator().forward(
+        array, reuse=False, scope_name='disc2')
+    print(discriminator.shape)
